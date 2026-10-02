@@ -1,130 +1,65 @@
-# 🌌 Kosmic Theme — Smooth Dark Theme for Pterodactyl
+# Kosmic
 
-Developed by **xspidero**  
-A high-performance, dark minimalist theme with smooth matte textures engineered for **Pterodactyl Panel (v1.12.x+)**. Features an automated installer, Cloudflare Edge licensing verification, and a Discord community hub.
+A clean dark theme for Pterodactyl Panel.
 
----
+## What it is
 
-## 📸 Preview
+Kosmic is a dark theme for Pterodactyl with solid color accents, a redesigned single-card login layout, dark admin pages, and bundled local fonts.
 
-| Default Pterodactyl (Before) | Kosmic Theme (After) |
-| :---: | :---: |
-| ![Default Pterodactyl](preview-before.png) | ![Kosmic Theme](preview-after.png) |
+## Requirements
 
----
+- Pterodactyl Panel 1.11.x or 1.12.x
+- Root or sudo access on the panel host
+- `curl` and `tar` installed on the system
 
-## ✨ Features
+## License key
 
-- 💎 **Smooth Dark Texture**: Deep obsidian slate surfaces with subtle frosted micro-borders and smooth inset shadows. Reduced gradients for a modern, tactile interface.
-- 🚀 **Silenced reCAPTCHA**: Permanently eliminates intrusive floating captcha badges for a clean, uninterrupted authentication experience.
-- 💬 **Discord Community Hub**: Direct navigation button connecting your players and staff to your community Discord server.
-- ⚡ **Animated Server Telemetry**: Dynamic pulsing glow badges for live server statuses (Online, Starting, Offline).
-- 💻 **Revamped Console**: Deep obsidian terminal styling with JetBrains Mono typography and clean solid action buttons (Start, Restart, Stop, Kill).
-- 🛠️ **AdminLTE Dark Mode**: Complete dark interface overhaul for `/admin` matching the client-side theme.
-- 🔒 **Cloudflare Edge Licensing**: Integrated cryptographic licensing authority verifying activations against our Cloudflare D1 cluster.
+Kosmic requires a free license key to install. You can claim one in the #claim-license channel on Discord:
+https://discord.com/invite/hc9TUCsQpS
 
----
+When you run the installer, it sends your panel domain and license key to `https://licensing.veloracloud.site/api/verify` to validate the key against our license database. No other files, credentials, or server data are sent.
 
-## 🔑 How to Get Your Free License
+## Install
 
-Kosmic is free to use for both personal and commercial game server hosting networks!
+### Quick install (public)
 
-1. Join our official Discord server:  
-   👉 **[https://discord.com/invite/hc9TUCsQpS](https://discord.com/invite/hc9TUCsQpS)**
-2. Go to the **#claim-license** channel.
-3. Claim your free community license key.
-
----
-
-## 📦 Package Structure
-
-This package is structured to standard Pterodactyl theme specifications:
-
-```
-Kosmic-Theme/
-├── public/
-│   └── themes/
-│       └── kosmic/
-│           ├── theme.css
-│           ├── theme.js
-│           └── admin-theme.css
-├── resources/
-│   └── views/
-│       ├── templates/
-│       │   └── wrapper.blade.php
-│       └── layouts/
-│           └── admin.blade.php
-├── install.sh
-├── uninstall.sh
-├── LICENSE.md
-├── LICENSE-KEY.txt
-├── README.md
-├── preview-before.png
-└── preview-after.png
-```
-
----
-
-## 🚀 Installation
-
-You can install Kosmic using either method below:
-
-### Method 1: Public Quick Install (One-Line)
-
-Run this single command on your Pterodactyl server (as root):
+Run this command on your panel server as root:
 
 ```bash
 bash <(curl -s https://raw.githubusercontent.com/xspidero/kosmic-theme/main/install.sh)
 ```
 
-### Method 2: Git Clone Installation
+### From release zip
+
+1. Upload the zip to your server and extract it:
+   ```bash
+   unzip Kosmic-1.0.0.zip
+   cd Kosmic
+   ```
+2. Run the installer:
+   ```bash
+   sudo bash install.sh
+   ```
+3. Enter your license key when prompted.
+4. Hard-refresh your browser (Ctrl+F5) to load the updated stylesheets.
+
+## Uninstall
+
+To remove Kosmic and restore default panel styling:
 
 ```bash
-git clone https://github.com/xspidero/kosmic-theme.git
-cd kosmic-theme
-sudo chmod +x install.sh
-sudo ./install.sh
+sudo bash uninstall.sh
 ```
 
-During installation:
-- The installer automatically detects your panel domain/hostname.
-- Prompts for your Kosmic License Key (enter the key claimed from Discord).
-- Handshakes cryptographically with the Cloudflare Edge API (`https://licensing.veloracloud.site/api/verify`).
-- Preserves a safety backup of your original templates in `/var/www/pterodactyl/theme_backups/`.
-- Deploys assets, configures permissions, and flushes Laravel template caches.
+This removes the theme assets and the lines added to your Blade templates. It does not overwrite files with old backups.
 
-### Method 3: Manual Drag & Drop (BuiltByBit Package)
+## Config
 
-If you prefer manual file placement:
+In `public/themes/kosmic/theme.js`:
+- `SHOW_DISCORD_BUTTON`: Set to `true` to display a Discord invite button in the top navigation bar. Default is `false`.
+- `DISCORD_INVITE_URL`: Your Discord invite link.
 
-```bash
-# Copy theme assets into panel root
-cp -rf public/* /var/www/pterodactyl/public/
-cp -rf resources/* /var/www/pterodactyl/resources/
+## Support
 
-# Flush Laravel template caches
-cd /var/www/pterodactyl
-php artisan view:clear
-php artisan config:clear
-php artisan cache:clear
-```
-
----
-
-## 🔄 Uninstallation & Rollback
-
-To restore default Pterodactyl appearance at any time:
-
-```bash
-sudo chmod +x uninstall.sh
-sudo ./uninstall.sh
-```
-
-The uninstaller automatically restores your untouched original template backups.
-
----
-
-## 📄 License & Terms
-
-Distributed under the **Kosmic Community License**. Author: **xspidero**. Free for personal and commercial game server hosting networks.  
-Need help or custom modifications? Join our Discord: **[discord.com/invite/hc9TUCsQpS](https://discord.com/invite/hc9TUCsQpS)**
+For questions, bug reports, or license keys:
+- Discord: https://discord.com/invite/hc9TUCsQpS

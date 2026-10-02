@@ -7,7 +7,9 @@
 *.zip
 *.tar.gz
 
+# Theme assets distributed via licensing server, not public git
+public/
+
 # Operating System & Staging
 .DS_Store
 Thumbs.db
-pterodactyl/

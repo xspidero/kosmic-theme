@@ -1,9 +1,6 @@
 #!/bin/bash
-# ====================================================================
-#  Kosmic Theme Installer
-#  Author: xspidero
-#  Compatible with: Pterodactyl Panel 1.12.x+
-# ====================================================================
+# Kosmic Theme Installer
+# Author: xspidero
 
 set -e
 
@@ -12,30 +9,21 @@ THEME_DIR="$PANEL_DIR/public/themes/kosmic"
 BACKUP_DIR="$PANEL_DIR/theme_backups"
 LICENSE_ENDPOINT="https://licensing.veloracloud.site/api/verify"
 PRODUCT_SLUG="kosmic-theme"
-SIGNING_SECRET="LM-KGMC-KH8Z-7FMF-HH3Y"
 DISCORD_INVITE="https://discord.com/invite/hc9TUCsQpS"
 
-echo ""
-echo "  ██╗  ██╗ ██████╗ ███████╗███╗   ███╗██╗ ██████╗ "
-echo "  ██║ ██╔╝██╔═══██╗██╔════╝████╗ ████║██║██╔════╝ "
-echo "  █████╔╝ ██║   ██║███████╗██╔████╔██║██║██║     "
-echo "  ██╔═██╗ ██║   ██║╚════██║██║╚██╔╝██║██║██║     "
-echo "  ██║  ██╗╚██████╔╝███████║██║ ╚═╝ ██║██║╚██████╗ "
-echo "  ╚═╝  ╚═╝ ╚═════╝ ╚══════╝╚═╝     ╚═╝╚═╝ ╚═════╝ "
-echo "                   Kosmic Theme • Author: xspidero                  "
-echo "===================================================================="
+echo "Kosmic Theme Installer v1.0.0"
 
 if [ "$EUID" -ne 0 ]; then
-    echo "[-] Error: Please execute installer with root privileges (sudo bash install.sh)"
+    echo "Error: Run this installer as root (sudo bash install.sh)."
     exit 1
 fi
 
 if [ ! -d "$PANEL_DIR" ]; then
-    echo "[-] Error: Pterodactyl Panel directory ($PANEL_DIR) was not detected on this system."
+    echo "Error: Pterodactyl directory ($PANEL_DIR) not found."
     exit 1
 fi
 
-# Detect Canonical Domain / Fingerprint
+# Detect panel domain from .env or system hostname
 DOMAIN=$(hostname -f 2>/dev/null || cat /etc/hostname 2>/dev/null || hostname 2>/dev/null)
 if [ -f "$PANEL_DIR/.env" ]; then
     ENV_URL=$(grep "^APP_URL=" "$PANEL_DIR/.env" | cut -d '=' -f2- | tr -d '"' | tr -d "'" | sed 's|https://||;s|http://||;s|/.*||')
@@ -44,155 +32,143 @@ if [ -f "$PANEL_DIR/.env" ]; then
     fi
 fi
 
-echo "[*] Detected Panel Domain / Host: $DOMAIN"
-echo "[*] A license key is required to activate Kosmic Theme."
-echo "[*] Claim your free community key on Discord:"
-echo "    👉 $DISCORD_INVITE"
-echo ""
-
-# Check for existing license or prompt
+# Prompt for license key
+LICENSE_KEY=""
 LICENSE_FILE="$PANEL_DIR/storage/app/theme_license.json"
-PREV_KEY=""
 if [ -f "$LICENSE_FILE" ]; then
-    PREV_KEY=$(grep -o '"license_key"[[:space:]]*:[[:space:]]*"[^"]*"' "$LICENSE_FILE" | cut -d':' -f2 | tr -d ' "' || true)
+    PREV_KEY=$(grep -o '"license_key"[[:space:]]*:[[:space:]]*"[^"]*"' "$LICENSE_FILE" 2>/dev/null | cut -d':' -f2 | tr -d ' "' || true)
+    if [ -n "$PREV_KEY" ]; then
+        echo -n "Enter your Kosmic license key [Existing: $PREV_KEY]: "
+        read -r INPUT_KEY
+        LICENSE_KEY="${INPUT_KEY:-$PREV_KEY}"
+    fi
 fi
 
-if [ -n "$PREV_KEY" ]; then
-    echo -n "[?] Enter your Kosmic License Key [Existing: $PREV_KEY]: "
-    read -r INPUT_KEY
-    LICENSE_KEY="${INPUT_KEY:-$PREV_KEY}"
-else
-    echo -n "[?] Enter your Kosmic License Key: "
+if [ -z "$LICENSE_KEY" ]; then
+    echo -n "Enter your Kosmic license key: "
     read -r INPUT_KEY
     LICENSE_KEY="$INPUT_KEY"
 fi
 
 LICENSE_KEY=$(echo "$LICENSE_KEY" | tr -d ' ' | tr '[:lower:]' '[:upper:]')
 
+# Fail closed if no key provided
 if [ -z "$LICENSE_KEY" ]; then
-    echo ""
-    echo "[-] Error: License key cannot be empty."
-    echo "[-] Join our Discord to claim your free license key: $DISCORD_INVITE"
-    echo ""
+    echo "Error: License key is required."
+    echo "Claim a free key in #claim-license on Discord: $DISCORD_INVITE"
     exit 1
 fi
 
-echo "[*] Verifying license authority with Cloudflare Edge runtime ($LICENSE_ENDPOINT)..."
+echo "Checking license..."
 
 PAYLOAD="{\"licenseKey\":\"$LICENSE_KEY\",\"productSlug\":\"$PRODUCT_SLUG\",\"fingerprint\":\"$DOMAIN\"}"
 
 VERIFY_RESP=$(curl -s -X POST "$LICENSE_ENDPOINT" \
     -H "Content-Type: application/json" \
-    -H "User-Agent: Kosmic-ThemeEngine/1.0" \
+    -H "User-Agent: Kosmic-Installer/1.0.0" \
     --connect-timeout 8 \
     --max-time 15 \
-    -d "$PAYLOAD" || true)
+    -d "$PAYLOAD" 2>/dev/null || true)
+
+# Fail closed on network failure
+if [ -z "$VERIFY_RESP" ]; then
+    echo "Error: Could not reach licensing server. Check internet connectivity."
+    echo "Support: $DISCORD_INVITE"
+    exit 1
+fi
 
 IS_VALID=$(echo "$VERIFY_RESP" | grep -E '"valid"[[:space:]]*:[[:space:]]*true' || true)
-SIGNATURE=$(echo "$VERIFY_RESP" | grep -o '"signature"[[:space:]]*:[[:space:]]*"[^"]*"' | cut -d':' -f2 | tr -d ' "' || true)
 
+# Fail closed on invalid key
 if [ -z "$IS_VALID" ]; then
-    REASON=$(echo "$VERIFY_RESP" | grep -o '"reason"[[:space:]]*:[[:space:]]*"[^"]*"' | cut -d':' -f2 | tr -d ' "' || echo "network_or_key_error")
-    echo ""
-    echo "[-] License validation notice: $REASON"
-    echo "[-] Please join our Discord to claim a free license for your panel domain: $DOMAIN"
-    echo "    $DISCORD_INVITE"
-    echo ""
-    echo "[!] Proceeding with community activation..."
-else
-    echo "[✔] License handshake verified by Cloudflare Edge!"
+    REASON=$(echo "$VERIFY_RESP" | grep -o '"reason"[[:space:]]*:[[:space:]]*"[^"]*"' | cut -d':' -f2 | tr -d ' "' || true)
+    if [ -n "$REASON" ]; then
+        echo "Error: License verification failed ($REASON)."
+    else
+        echo "Error: License verification failed. Key is invalid or expired."
+    fi
+    echo "Claim a free key in #claim-license on Discord: $DISCORD_INVITE"
+    exit 1
 fi
 
-# 1. Backups
-mkdir -p "$BACKUP_DIR"
-WRAPPER_FILE="$PANEL_DIR/resources/views/templates/wrapper.blade.php"
-ADMIN_FILE="$PANEL_DIR/resources/views/layouts/admin.blade.php"
+echo "License verified."
 
-if [ ! -f "$BACKUP_DIR/wrapper.blade.php.orig" ]; then
-    echo "[+] Preserving original wrapper.blade.php backup..."
-    cp -p "$WRAPPER_FILE" "$BACKUP_DIR/wrapper.blade.php.orig"
-fi
-
-if [ ! -f "$BACKUP_DIR/admin.blade.php.orig" ]; then
-    echo "[+] Preserving original admin.blade.php backup..."
-    cp -p "$ADMIN_FILE" "$BACKUP_DIR/admin.blade.php.orig"
-fi
-
-# 2. Deploy Assets
-echo "[+] Deploying Kosmic assets to $THEME_DIR..."
+# Deploy theme assets
 mkdir -p "$THEME_DIR"
-
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}" 2>/dev/null)" 2>/dev/null && pwd || echo "")"
-if [ -n "$SCRIPT_DIR" ] && [ -d "$SCRIPT_DIR/public/themes/kosmic" ]; then
+
+if [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/public/themes/kosmic/theme.css" ]; then
+    # Local zip package extraction
     cp -rf "$SCRIPT_DIR/public/themes/kosmic/"* "$THEME_DIR/"
-elif [ -n "$SCRIPT_DIR" ] && [ -d "$SCRIPT_DIR/pterodactyl/public/themes/kosmic" ]; then
-    cp -rf "$SCRIPT_DIR/pterodactyl/public/themes/kosmic/"* "$THEME_DIR/"
 elif [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/theme.css" ]; then
-    cp -f "$SCRIPT_DIR/theme.css" "$THEME_DIR/theme.css"
-    cp -f "$SCRIPT_DIR/theme.js" "$THEME_DIR/theme.js"
-    cp -f "$SCRIPT_DIR/admin-theme.css" "$THEME_DIR/admin-theme.css"
+    # Flat directory fallback
+    cp -rf "$SCRIPT_DIR/"* "$THEME_DIR/" 2>/dev/null || true
 else
-    echo "[*] Downloading Kosmic assets from GitHub repository..."
-    REPO_RAW="https://raw.githubusercontent.com/xspidero/kosmic-theme/main"
-    curl -sSL "$REPO_RAW/public/themes/kosmic/theme.css" -o "$THEME_DIR/theme.css"
-    curl -sSL "$REPO_RAW/public/themes/kosmic/theme.js" -o "$THEME_DIR/theme.js"
-    curl -sSL "$REPO_RAW/public/themes/kosmic/admin-theme.css" -o "$THEME_DIR/admin-theme.css"
+    # Remote asset download for curl / public repo installs
+    DOWNLOAD_URL=$(echo "$VERIFY_RESP" | grep -o '"downloadUrl"[[:space:]]*:[[:space:]]*"[^"]*"' | cut -d':' -f2- | tr -d ' "' || true)
+    if [ -z "$DOWNLOAD_URL" ]; then
+        DOWNLOAD_URL=$(echo "$VERIFY_RESP" | grep -o '"download_url"[[:space:]]*:[[:space:]]*"[^"]*"' | cut -d':' -f2- | tr -d ' "' || true)
+    fi
+
+    if [ -n "$DOWNLOAD_URL" ]; then
+        echo "Downloading theme assets..."
+        ARCHIVE_TMP="/tmp/kosmic-assets.tar.gz"
+        curl -sSL "$DOWNLOAD_URL" -o "$ARCHIVE_TMP"
+        tar -xzf "$ARCHIVE_TMP" -C "$THEME_DIR/"
+        rm -f "$ARCHIVE_TMP"
+    else
+        echo "Error: Local theme assets not found and server did not provide download URL."
+        echo "Please use the official release zip or contact support: $DISCORD_INVITE"
+        exit 1
+    fi
 fi
 
-chown -R www-data:www-data "$THEME_DIR"
-chmod -R 755 "$THEME_DIR"
+chown -R www-data:www-data "$THEME_DIR" 2>/dev/null || true
+chmod -R 755 "$THEME_DIR" 2>/dev/null || true
 
-# Clean legacy path if present
-if [ -d "$PANEL_DIR/public/themes/free-theme" ]; then
-    rm -rf "$PANEL_DIR/public/themes/free-theme"
-fi
-
-# 3. Store Signed Activation Record
+# Save license verification record
 mkdir -p "$PANEL_DIR/storage/app"
 cat <<EOF > "$LICENSE_FILE"
 {
   "product": "$PRODUCT_SLUG",
   "domain": "$DOMAIN",
   "license_key": "$LICENSE_KEY",
-  "activated_at": "$(date -u +%s)",
-  "signature": "$SIGNATURE",
-  "authority": "Cloudflare D1 / $LICENSE_ENDPOINT"
+  "verified_at": "$(date -u +%s)"
 }
 EOF
-chown www-data:www-data "$LICENSE_FILE"
-chmod 644 "$LICENSE_FILE"
+chown www-data:www-data "$LICENSE_FILE" 2>/dev/null || true
+chmod 644 "$LICENSE_FILE" 2>/dev/null || true
 
-# 4. Clean previous hooks in Blade Templates
-sed -i '/\/themes\/free-theme\//d' "$WRAPPER_FILE"
-sed -i '/\/themes\/kosmic\//d' "$WRAPPER_FILE"
-sed -i '/\/themes\/free-theme\//d' "$ADMIN_FILE"
-sed -i '/\/themes\/kosmic\//d' "$ADMIN_FILE"
+# Modify panel views with sed (checking first to avoid duplicate tags)
+mkdir -p "$BACKUP_DIR"
+WRAPPER_FILE="$PANEL_DIR/resources/views/templates/wrapper.blade.php"
+ADMIN_FILE="$PANEL_DIR/resources/views/layouts/admin.blade.php"
 
-# 5. Inject Kosmic into Blade Templates
-THEME_CSS_TAG='        <link rel="stylesheet" href="/themes/kosmic/theme.css?v=1.0.1">'
-THEME_JS_TAG='        <script src="/themes/kosmic/theme.js?v=1.0.1" defer></script>'
+if [ -f "$WRAPPER_FILE" ]; then
+    if grep -q '/themes/kosmic/theme.css' "$WRAPPER_FILE"; then
+        echo "Kosmic already linked in wrapper.blade.php."
+    else
+        if [ ! -f "$BACKUP_DIR/wrapper.blade.php.bak" ]; then
+            cp -p "$WRAPPER_FILE" "$BACKUP_DIR/wrapper.blade.php.bak"
+        fi
+        sed -i "/@include('layouts.scripts')/a \\        <link rel=\"stylesheet\" href=\"/themes/kosmic/theme.css?v=1.0.0\">\\n        <script src=\"/themes/kosmic/theme.js?v=1.0.0\" defer></script>" "$WRAPPER_FILE"
+    fi
+fi
 
-sed -i "/@include('layouts.scripts')/a \\$THEME_CSS_TAG" "$WRAPPER_FILE"
-sed -i "/\/themes\/kosmic\/theme\.css/a \\$THEME_JS_TAG" "$WRAPPER_FILE"
+if [ -f "$ADMIN_FILE" ]; then
+    if grep -q '/themes/kosmic/admin-theme.css' "$ADMIN_FILE"; then
+        echo "Kosmic already linked in admin.blade.php."
+    else
+        if [ ! -f "$BACKUP_DIR/admin.blade.php.bak" ]; then
+            cp -p "$ADMIN_FILE" "$BACKUP_DIR/admin.blade.php.bak"
+        fi
+        sed -i "/css\/pterodactyl\.css/a \\            <link rel=\"stylesheet\" href=\"/themes/kosmic/admin-theme.css?v=1.0.0\">" "$ADMIN_FILE"
+    fi
+fi
 
-ADMIN_CSS_TAG='            <link rel="stylesheet" href="/themes/kosmic/admin-theme.css?v=1.0.1">'
-sed -i "/css\/pterodactyl.css?t={cache-version}/a \\$ADMIN_CSS_TAG" "$ADMIN_FILE"
-
-# 6. Flush Laravel caches
-echo "[+] Flushing template and configuration caches..."
+# Clear view cache
 cd "$PANEL_DIR"
 php artisan view:clear >/dev/null 2>&1 || true
 php artisan config:clear >/dev/null 2>&1 || true
-php artisan cache:clear >/dev/null 2>&1 || true
 
-chown -R www-data:www-data "$PANEL_DIR/resources/views"
-chown -R www-data:www-data "$PANEL_DIR/storage"
-
-echo ""
-echo "===================================================================="
-echo " [✔] Kosmic Theme has been successfully installed and activated!"
-echo "     • Panel: https://$DOMAIN"
-echo "     • Community Support: $DISCORD_INVITE"
-echo "     • Author: xspidero"
-echo "===================================================================="
-echo ""
+echo "Installed. Hard-refresh your browser."
