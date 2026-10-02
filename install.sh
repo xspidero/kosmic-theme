@@ -4,7 +4,7 @@
 
 set -e
 
-PANEL_DIR="/var/www/pterodactyl"
+PANEL_DIR="${PANEL_DIR:-/var/www/pterodactyl}"
 THEME_DIR="$PANEL_DIR/public/themes/kosmic"
 BACKUP_DIR="$PANEL_DIR/theme_backups"
 LICENSE_ENDPOINT="https://licensing.veloracloud.site/api/verify"
@@ -38,8 +38,10 @@ LICENSE_FILE="$PANEL_DIR/storage/app/theme_license.json"
 if [ -f "$LICENSE_FILE" ]; then
     PREV_KEY=$(grep -o '"license_key"[[:space:]]*:[[:space:]]*"[^"]*"' "$LICENSE_FILE" 2>/dev/null | cut -d':' -f2 | tr -d ' "' || true)
     if [ -n "$PREV_KEY" ]; then
-        echo -n "Enter your Kosmic license key [Existing: $PREV_KEY]: "
+        MASKED_KEY="****-${PREV_KEY: -4}"
+        echo -n "Enter your Kosmic license key [Existing: $MASKED_KEY]: "
         read -r INPUT_KEY
+        echo
         LICENSE_KEY="${INPUT_KEY:-$PREV_KEY}"
     fi
 fi
@@ -47,6 +49,7 @@ fi
 if [ -z "$LICENSE_KEY" ]; then
     echo -n "Enter your Kosmic license key: "
     read -r INPUT_KEY
+    echo
     LICENSE_KEY="$INPUT_KEY"
 fi
 
@@ -55,6 +58,13 @@ LICENSE_KEY=$(echo "$LICENSE_KEY" | tr -d ' ' | tr '[:lower:]' '[:upper:]')
 # Fail closed if no key provided
 if [ -z "$LICENSE_KEY" ]; then
     echo "Error: License key is required."
+    echo "Claim a free key in #claim-license on Discord: $DISCORD_INVITE"
+    exit 1
+fi
+
+# Reject invalid characters before building payload
+if ! [[ "$LICENSE_KEY" =~ ^[A-Z0-9-]+$ ]]; then
+    echo "Error: License key has invalid characters."
     echo "Claim a free key in #claim-license on Discord: $DISCORD_INVITE"
     exit 1
 fi

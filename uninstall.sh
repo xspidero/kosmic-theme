@@ -4,7 +4,7 @@
 
 set -e
 
-PANEL_DIR="/var/www/pterodactyl"
+PANEL_DIR="${PANEL_DIR:-/var/www/pterodactyl}"
 THEME_DIR="$PANEL_DIR/public/themes/kosmic"
 LICENSE_FILE="$PANEL_DIR/storage/app/theme_license.json"
 WRAPPER_FILE="$PANEL_DIR/resources/views/templates/wrapper.blade.php"

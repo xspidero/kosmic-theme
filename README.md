@@ -17,7 +17,7 @@ Kosmic is a dark theme for Pterodactyl with solid color accents, a redesigned si
 Kosmic requires a free license key to install. You can claim one in the #claim-license channel on Discord:
 https://discord.com/invite/hc9TUCsQpS
 
-When you run the installer, it sends your panel domain and license key to `https://licensing.veloracloud.site/api/verify` to validate the key against our license database. No other files, credentials, or server data are sent.
+When you run the installer, it sends your panel domain and license key to `https://licensing.veloracloud.site/api/verify` to validate the key against our license database. No other files, credentials, or server data are sent. Installs from the GitHub script download the theme files from the Kosmic license server after the key is verified.
 
 ## Install
 
