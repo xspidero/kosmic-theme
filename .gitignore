@@ -1,0 +1,12 @@
+# Credentials & Private Keys
+*.pem
+*.key
+*.id_rsa
+
+# Archives & Builds
+*.zip
+*.tar.gz
+
+# Operating System
+.DS_Store
+Thumbs.db
